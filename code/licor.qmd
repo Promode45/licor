@@ -1,0 +1,96 @@
+---
+title: "licor"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readr)
+```
+
+You can add options to executable code like this
+```{r}
+resp_data <- list.files(path = "/Users/pramodhegde/Library/CloudStorage/OneDrive-UniversityofGeorgia/Documents/Licor",
+                        pattern = "*.csv",
+                        full.names = T) %>% 
+  lapply(read.csv) %>% 
+  bind_rows 
+new_colnames <- as.character(resp_data[1,])
+colnames(resp_data) <- new_colnames
+resp_data_w <- resp_data %>% 
+  na.omit() 
+resp_data_w <- resp_data_w %>% 
+  filter(!row_number() %in% c(1,2,93,94,185,186,277,278,369,370,461,462,553,554,645,646,737,738,830,831,922,923)) 
+write_csv("../output/combined_soilresp.csv")
+  
+ 
+  
+  
+```
+
+```{r}
+resp_data_w <- resp_data_w %>% 
+  clean_names() %>% 
+  mutate(date_time_initial_value = as.POSIXct(date_time_initial_value, tz = Sys.timezone(), format="%Y/%m/%d %H:%M:%S")) %>% 
+  mutate(label = factor(label)) %>% 
+ mutate_if(is.character, as.numeric) %>% 
+  mutate(daym = day(date_time_initial_value)) %>% 
+  mutate(month = month(date_time_initial_value)) %>% 
+  mutate(treatment = case_when( label %in% c(1,8,12,20,23) ~ "Disturbance",
+                                label %in% c(2,9,11,19,25) ~ "NPK Cessation",
+                                label %in% c(3,10,14,17,24) ~ "NPK",
+                                label %in% c(4,7,15,16,22) ~ "Control", 
+                                label %in% c(5,6,13,18,21) ~ "NPK + Disturbance",
+                                .default = "Outside treatments"
+    )) %>% 
+  na.omit() %>% 
+  filter(!swc_2_mean < 0) %>% 
+  mutate( drying_cycle = case_when( daym ==29 & month == 01 ~ "1",
+                                    daym == 30 & month == 01 ~"1" ,
+                                    daym == 31 & month == 01 ~ "1", 
+                                    daym == 05 ~ "2", 
+                                    daym == 06 ~ "2", 
+                                    daym == 07 ~ "2",
+                                    daym == 27 & month == 03 ~ "3",
+                                    daym== 28 & month == 03 ~ "3",
+                                    daym == 29 & month == 03 ~ "3",
+                                    daym == 01 & month == 04 ~ "3", 
+                                    .default = "0"
+                                    
+    
+    
+    
+  )) %>% 
+  
+   mutate(drying_cycle = factor(drying_cycle)) %>% 
+  mutate(treatment = factor(treatment))
+    
+    
+
+summary(resp_data_w)
+
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+resp_data_w %>% 
+  group_by(treatment) %>% 
+  ggplot(aes(treatment,fco2_dry))+
+  geom_boxplot()+
+  facet_wrap(~drying_cycle)
+```
+
+```{r}
+resp_data_w %>% 
+  group_by(label, daym, treatment, drying_cycle) %>% 
+  summarise(across(swc_2_mean:ts_2_mean, mean, na.rm = T)) %>% 
+  ungroup() %>% 
+  filter(drying_cycle ==3) %>% 
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point(aes(color = treatment))+
+  geom_smooth()+
+  facet_wrap(~daym, scales = "free_y")
+```
+
