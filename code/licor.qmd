@@ -11,6 +11,7 @@ library(readr)
 ```
 
 You can add options to executable code like this
+
 ```{r}
 resp_data <- list.files(path = "/Users/pramodhegde/Library/CloudStorage/OneDrive-UniversityofGeorgia/Documents/Licor",
                         pattern = "*.csv",
@@ -23,12 +24,38 @@ resp_data_w <- resp_data %>%
   na.omit() 
 resp_data_w <- resp_data_w %>% 
   filter(!row_number() %in% c(1,2,93,94,185,186,277,278,369,370,461,462,553,554,645,646,737,738,830,831,922,923)) 
-write_csv("../output/combined_soilresp.csv")
+#write_csv("../output/combined_soilresp.csv")
   
  
   
   
 ```
+
+
+Taking out outliers, but not recommended
+```{r}
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+```
+
+```{r}
+resp_data_wrm <- resp_data_w %>% 
+  mutate(swc_2_mean = remove_outliers(swc_2_mean)) %>% 
+  na.omit()
+
+
+```
+Removed 29 outliers. 
+
+
+
+
 
 ```{r}
 resp_data_w <- resp_data_w %>% 
@@ -46,7 +73,7 @@ resp_data_w <- resp_data_w %>%
                                 .default = "Outside treatments"
     )) %>% 
   na.omit() %>% 
-  filter(!swc_2_mean < 0) %>% 
+  filter(!swc_2_mean < 0)  %>% 
   mutate( drying_cycle = case_when( daym ==29 & month == 01 ~ "1",
                                     daym == 30 & month == 01 ~"1" ,
                                     daym == 31 & month == 01 ~ "1", 
@@ -65,7 +92,28 @@ resp_data_w <- resp_data_w %>%
   )) %>% 
   
    mutate(drying_cycle = factor(drying_cycle)) %>% 
-  mutate(treatment = factor(treatment))
+  mutate(treatment = factor(treatment)) %>% 
+  mutate(dar = case_when(
+    daym ==29 & month == 01 ~ "1",
+    daym == 30 & month == 01 ~"2" ,
+    daym == 31 & month == 01 ~ "3",
+    daym == 05 ~ "1",
+    daym == 06 ~ "2",
+    daym == 07 ~ "3",
+    daym == 27 & month == 03 ~ "1",
+     daym== 28 & month == 03 ~ "2",
+    daym == 29 & month == 03 ~ "3",
+    daym == 01 & month == 04 ~ "6",
+    .default = "0"
+    
+    
+  )
+           
+           ) %>% 
+  mutate(dar = factor(dar)) %>% 
+  mutate(tod = case_when (hour(date_time_initial_value) < 12 ~ "am",
+                            .default = "pm")) %>% 
+  mutate(tod = factor(tod))
     
     
 
@@ -74,23 +122,56 @@ summary(resp_data_w)
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
-```{r}
+
+```{r fig.width=10, fig.height=5}
 resp_data_w %>% 
-  group_by(treatment) %>% 
+  group_by(treatment) %>%
+  filter(!treatment == "Outside treatments") %>% 
   ggplot(aes(treatment,fco2_dry))+
-  geom_boxplot()+
-  facet_wrap(~drying_cycle)
+  geom_boxplot(aes(color = treatment))+
+  facet_wrap(~drying_cycle)+
+  scale_y_continuous()+
+  labs(x = NULL, y = "soil respiration in umol/m2/s1") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  scale_fill_viridis_d()+
+  theme(legend.position = "none")
+  #ggsave("../output/treatmenteffects.jpg")
 ```
 
 ```{r}
 resp_data_w %>% 
-  group_by(label, daym, treatment, drying_cycle) %>% 
+  group_by(label, daym, treatment, drying_cycle, tod, dar) %>% 
+  summarise(across(swc_2_mean:ts_2_mean, mean, na.rm = T)) %>% 
+  ungroup() %>% 
+  filter(drying_cycle ==2) %>% 
+  ggplot(aes(dar, fco2_dry))+
+  geom_boxplot()+
+  facet_wrap(~treatment, scales = "free_y")+
+  labs(x = "days after rain",
+       y = " soil respiration in umol/m2/s1",
+       title = "Drying cycle 1")+
+ guides(color = guide_legend(title = "Morning/Afternoon"))
+#ggsave("../output/DC3_DARvsSR.jpg")
+
+```
+```{r}
+resp_data_wrm %>% 
+  group_by(label, daym, treatment, drying_cycle, tod, dar) %>% 
   summarise(across(swc_2_mean:ts_2_mean, mean, na.rm = T)) %>% 
   ungroup() %>% 
   filter(drying_cycle ==3) %>% 
-  ggplot(aes(swc_2_mean, fco2_dry))+
-  geom_point(aes(color = treatment))+
-  geom_smooth()+
-  facet_wrap(~daym, scales = "free_y")
+  group_by(tod) %>% 
+  ggplot(aes(dar, ts_2_mean))+
+  geom_boxplot(aes(color = tod))+
+  facet_wrap(~treatment, scales = "free_y")+
+  labs(x = "days after rain",
+       y = " soil temperature",
+       title = "Drying cycle 3")+
+ guides(color = guide_legend(title = "Morning/Afternoon"))
+ggsave("../output/DC3_DARvsST.jpg")
+```
+
+```{r}
+
 ```
 
