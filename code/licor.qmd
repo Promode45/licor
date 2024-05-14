@@ -113,23 +113,37 @@ resp_data_w <- resp_data_w %>%
   mutate(dar = factor(dar)) %>% 
   mutate(tod = case_when (hour(date_time_initial_value) < 12 ~ "am",
                             .default = "pm")) %>% 
-  mutate(tod = factor(tod))
+  mutate(tod = factor(tod)) %>% 
+   mutate(rep = case_when
+    (label %in% c(1:5) ~ "1",
+    label %in% c(6:10) ~ "2",
+      label %in% c(11:15) ~ "3",
+      label %in% c(16:20) ~ "4", 
+      label %in% c(21:25) ~ "5",
+      .default = "0"
+     )) %>% 
+  mutate(rep = factor(rep))
     
     
 
 summary(resp_data_w)
 
+resp_data_finalw <- resp_data_wrm %>% 
+  group_by(label, daym, month, treatment,drying_cycle,dar,tod) %>% 
+  summarise(across(swc_2_mean:ta_mean, mean)) %>% 
+  ungroup()
+
+
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
 
-```{r fig.width=10, fig.height=5}
-resp_data_w %>% 
+```{r}
+resp_data_wrm %>% 
   group_by(treatment) %>%
   filter(!treatment == "Outside treatments") %>% 
   ggplot(aes(treatment,fco2_dry))+
   geom_boxplot(aes(color = treatment))+
-  facet_wrap(~drying_cycle)+
   scale_y_continuous()+
   labs(x = NULL, y = "soil respiration in umol/m2/s1") +
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
@@ -139,11 +153,11 @@ resp_data_w %>%
 ```
 
 ```{r}
-resp_data_w %>% 
+resp_data_wrm %>% 
   group_by(label, daym, treatment, drying_cycle, tod, dar) %>% 
   summarise(across(swc_2_mean:ts_2_mean, mean, na.rm = T)) %>% 
   ungroup() %>% 
-  filter(drying_cycle ==2) %>% 
+  filter(drying_cycle ==3) %>% 
   ggplot(aes(dar, fco2_dry))+
   geom_boxplot()+
   facet_wrap(~treatment, scales = "free_y")+
@@ -172,6 +186,78 @@ ggsave("../output/DC3_DARvsST.jpg")
 ```
 
 ```{r}
+resp_data_wrm %>% 
+  filter(drying_cycle ==3) %>% 
+  ggplot(aes(ta_mean, fco2_dry))+
+  geom_point(aes(color = treatment))+
+  geom_smooth(method = lm)+
+  labs(x = "soil temperature (C)",
+       y = "Soil respiration (umol/m2/s)",
+       title = "Drying cycle 3")
+  
+```
+```{r}
+resp_data_wrm %>% 
+  filter(treatment == "NPK + Disturbance", drying_cycle ==3) %>%
+  ggplot(aes(ts_2_mean, fco2_dry))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  labs(x = "soil temperature (C)",
+       y = "Soil respiration (umol/m2/s)",
+       title = "Drying cycle 3")
+```
 
+
+```{r}
+resp_data_wrm %>% 
+  filter(drying_cycle ==3) %>% 
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point()+
+  stat_smooth(method = lm)+
+  facet_wrap(~treatment)
+#ggsave("../output/SRvsSM.jpg")
+```
+
+```{r}
+resp_data_wrm %>% 
+  filter(treatment == "NPK + Disturbance", drying_cycle ==3) %>%
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point()+
+  geom_smooth(method = lm)+
+  labs(x = "soil temperature (C)",
+       y = "Soil respiration (umol/m2/s)",
+       title = "Drying cycle 3")
+```
+Grouping disturbed and undisturbed plots 
+```{r}
+resp_data_finalw %>% 
+ mutate(disturbed = case_when(
+   treatment == "Disturbance" ~ T, 
+   treatment == "NPK + Disturbance" ~ T, 
+   .default = F
+ )) %>% 
+  group_by(disturbed) %>% 
+  filter(drying_cycle == 3) %>% 
+  ggplot(aes(dar, fco2_dry)) + 
+  geom_boxplot(aes(color = disturbed))+
+  labs(x = "Days after rain",
+       y = "Soil respiration",
+       title = "Drying cycle 3") +
+  guides(color = guide_legend("Disturbed plots"))
+
+```
+Comparing plots within disturbed plots 
+```{r}
+resp_data_finalw %>% 
+ mutate(disturbed = case_when(
+   treatment == "Disturbance" ~ T, 
+   treatment == "NPK + Disturbance" ~ T, 
+   .default = F
+ )) %>% 
+  filter(disturbed == T) %>% 
+  ggplot(aes(treatment, fco2_dry)) +
+  geom_boxplot()+
+  facet_wrap(~drying_cycle)
+  
 ```
 
