@@ -44,13 +44,6 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
 }
 ```
 
-```{r}
-resp_data_wrm <- resp_data_w %>% 
-  mutate(swc_2_mean = remove_outliers(swc_2_mean)) %>% 
-  na.omit()
-
-
-```
 Removed 29 outliers. 
 
 
@@ -127,6 +120,10 @@ resp_data_w <- resp_data_w %>%
     
 
 summary(resp_data_w)
+
+resp_data_wrm <- resp_data_w %>% 
+  mutate(swc_2_mean = remove_outliers(swc_2_mean)) %>% 
+  na.omit()
 
 resp_data_finalw <- resp_data_wrm %>% 
   group_by(label, daym, month, treatment,drying_cycle,dar,tod) %>% 
@@ -231,19 +228,19 @@ resp_data_wrm %>%
 Grouping disturbed and undisturbed plots 
 ```{r}
 resp_data_finalw %>% 
- mutate(disturbed = case_when(
-   treatment == "Disturbance" ~ T, 
-   treatment == "NPK + Disturbance" ~ T, 
-   .default = F
+ mutate(Treatment = case_when(
+   treatment == "Disturbance" ~ "Disturbed", 
+   treatment == "NPK + Disturbance" ~ "Disturbed", 
+   .default = "Undisturbed"
  )) %>% 
-  group_by(disturbed) %>% 
+  group_by(Treatment) %>% 
   filter(drying_cycle == 3) %>% 
-  ggplot(aes(dar, fco2_dry)) + 
-  geom_boxplot(aes(color = disturbed))+
+  filter(!treatment == "Outside treatments") %>% 
+  ggplot(aes(dar, swc_2_mean)) + 
+  geom_boxplot(aes(color = Treatment))+
   labs(x = "Days after rain",
-       y = "Soil respiration",
-       title = "Drying cycle 3") +
-  guides(color = guide_legend("Disturbed plots"))
+       y = "Soil moisture",
+       title = "Drying cycle 3")
 
 ```
 Comparing plots within disturbed plots 
