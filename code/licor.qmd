@@ -11,6 +11,8 @@ library(readr)
 library(rstatix)
 #install.packages("FSA")
 library(FSA)
+#install.packages("rcompanion")
+library(rcompanion)
 ```
 
 You can add options to executable code like this
@@ -62,11 +64,11 @@ resp_data_w <- resp_data_w %>%
   mutate(daym = day(date_time_initial_value)) %>% 
   mutate(month = month(date_time_initial_value)) %>% 
   mutate(treatment = case_when( label %in% c(1,8,12,20,23) ~ "Disturbance",
-                                label %in% c(2,9,11,19,25) ~ "NPK Cessation",
+                                label %in% c(2,9,11,19,25) ~ "NPK_Cessation",
                                 label %in% c(3,10,14,17,24) ~ "NPK",
                                 label %in% c(4,7,15,16,22) ~ "Control", 
-                                label %in% c(5,6,13,18,21) ~ "NPK + Disturbance",
-                                .default = "Outside treatments"
+                                label %in% c(5,6,13,18,21) ~ "NPK+Disturbance",
+                                .default = "Outside_treatments"
     )) %>% 
   na.omit() %>% 
   filter(!swc_2_mean < 0)  %>% 
@@ -282,7 +284,31 @@ pwc <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatmen
 ```
 
 ```{r}
-dunn.test::dunn.test(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
+dunnt <- dunnTest(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
+dunns <- dunnt$res
+cld <- cldList(comparison = dunns$Comparison,
+               p.value = dunns$P.adj,
+               threshold = 0.05) %>% 
+  filter(!Group == "Outside_treatments")
+names(cld)[1] <- "treatment"
+```
 
+```{r}
+resp_data_finalw %>% 
+  group_by(treatment) %>%
+  filter(!treatment == "Outside_treatments") %>% 
+  ggplot(aes(treatment,fco2_dry))+
+  geom_boxplot(aes(color = treatment))+
+  scale_y_continuous()+
+  labs(x = NULL, y = "soil respiration in umol/m2/s1") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  scale_fill_viridis_d()+
+  theme(legend.position = "none")+
+  geom_text(data = cld, aes(label = cld$Letter,y = 4, x = treatment), 
+            vjust = -0.5,
+            hjust= 0.5,
+            fontface = "bold",
+            size=3.5,
+            check_overlap = F)
 ```
 
