@@ -8,6 +8,7 @@ editor: visual
 library(tidyverse)
 library(janitor)
 library(readr)
+library(rstatix)
 ```
 
 You can add options to executable code like this
@@ -179,7 +180,7 @@ resp_data_wrm %>%
        y = " soil temperature",
        title = "Drying cycle 3")+
  guides(color = guide_legend(title = "Morning/Afternoon"))
-ggsave("../output/DC3_DARvsST.jpg")
+
 ```
 
 ```{r}
@@ -233,28 +234,46 @@ resp_data_finalw %>%
    treatment == "NPK + Disturbance" ~ "Disturbed", 
    .default = "Undisturbed"
  )) %>% 
-  group_by(Treatment) %>% 
-  filter(drying_cycle == 3) %>% 
+  group_by(Treatment,tod) %>% 
+  filter(drying_cycle == 2) %>% 
   filter(!treatment == "Outside treatments") %>% 
   ggplot(aes(dar, swc_2_mean)) + 
-  geom_boxplot(aes(color = Treatment))+
+  geom_boxplot(aes(color = Treatment, fill = tod), alpha = 0.3) +
   labs(x = "Days after rain",
-       y = "Soil moisture",
-       title = "Drying cycle 3")
+       y = "Soil respiration",
+       title = "Drying cycle 3")+
+  scale_fill_viridis_d()
 
 ```
 Comparing plots within disturbed plots 
 ```{r}
-resp_data_finalw %>% 
- mutate(disturbed = case_when(
-   treatment == "Disturbance" ~ T, 
-   treatment == "NPK + Disturbance" ~ T, 
-   .default = F
+resp_distvsundist <- resp_data_finalw %>% 
+ mutate(group = case_when(
+   treatment == "Disturbance" ~ "Disturbed", 
+   treatment == "NPK + Disturbance" ~ "Disturbed", 
+   .default = "Undisturbed"
  )) %>% 
-  filter(disturbed == T) %>% 
+  mutate(group = factor(group))
+
+resp_distvsundist %>% 
+  filter(group == "Disturbed") %>% 
   ggplot(aes(treatment, fco2_dry)) +
   geom_boxplot()+
   facet_wrap(~drying_cycle)
   
+```
+```{r}
+resp_data_finalw %>% 
+  group_by(treatment) %>% 
+  get_summary_stats(fco2_dry, type = "common")
+```
+
+
+
+Kruskall-Wallis test
+```{r}
+kruskal.test(fco2_dry ~ , data = resp_distvsundist)
+pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatment,
+                     p.adjust.methods = "BH")
 ```
 
