@@ -9,6 +9,8 @@ library(tidyverse)
 library(janitor)
 library(readr)
 library(rstatix)
+#install.packages("FSA")
+library(FSA)
 ```
 
 You can add options to executable code like this
@@ -272,8 +274,15 @@ resp_data_finalw %>%
 
 Kruskall-Wallis test
 ```{r}
-kruskal.test(fco2_dry ~ , data = resp_distvsundist)
-pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatment,
+kruskal.test(fco2_dry ~ treatment, data = resp_data_finalw)
+pwc <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatment,
                      p.adjust.methods = "BH")
+
+
+```
+
+```{r}
+dunn.test::dunn.test(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
+
 ```
 
