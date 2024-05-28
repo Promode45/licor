@@ -304,11 +304,13 @@ resp_data_finalw %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
   scale_fill_viridis_d()+
   theme(legend.position = "none")+
-  geom_text(data = cld, aes(label = cld$Letter,y = 4, x = treatment), 
+  geom_text(data = cld, aes(label = Letter,y = 4, x = treatment), 
             vjust = -0.5,
             hjust= 0.5,
             fontface = "bold",
             size=3.5,
-            check_overlap = F)
+            check_overlap = F)+
+  ggtitle("Soil respiration across treatments")
+#ggsave("../output/treatments_pwc.jpg")
 ```
 
