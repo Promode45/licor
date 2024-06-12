@@ -216,12 +216,29 @@ resp_data_wrm %>%
 resp_data_wrm %>% 
   filter(drying_cycle ==3) %>% 
   ggplot(aes(swc_2_mean, fco2_dry))+
-  geom_point()+
+  geom_point(aes(color = treatment))+
   stat_smooth(method = lm)+
   labs(x = "Soil moisture",
        y = "Flux in umol/m2/s")+
   facet_wrap(~treatment)
 #ggsave("../output/SRvsSM.jpg")
+```
+# Soil moisture v/s flux in dist and undist plots
+```{r}
+resp_distvsundist <- resp_data_finalw %>% 
+ mutate(group = case_when(
+   treatment == "Disturbance" ~ "Disturbed", 
+   treatment == "NPK + Disturbance" ~ "Disturbed", 
+   .default = "Undisturbed"
+ )) %>% 
+  mutate(group = factor(group))
+
+resp_distvsundist %>% 
+  filter(drying_cycle == 3) %>% 
+  filter(!treatment == "Outside_treatments") %>% 
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point(aes(color = group))+
+  geom_smooth(method = lm, aes(color = group))
 ```
 
 ```{r}
@@ -255,14 +272,6 @@ resp_data_finalw %>%
 ```
 Comparing plots within disturbed plots 
 ```{r}
-resp_distvsundist <- resp_data_finalw %>% 
- mutate(group = case_when(
-   treatment == "Disturbance" ~ "Disturbed", 
-   treatment == "NPK + Disturbance" ~ "Disturbed", 
-   .default = "Undisturbed"
- )) %>% 
-  mutate(group = factor(group))
-
 resp_distvsundist %>% 
   filter(drying_cycle == 3) %>% 
   filter(!treatment == "Outside treatments") %>% 
@@ -292,6 +301,12 @@ resp_data_finalw %>%
   group_by(treatment) %>% 
   get_summary_stats(fco2_dry, type = "common")
 ```
+```{r}
+resp_data_finalw %>% 
+  ggplot(aes(fco2_dry)) +
+  geom_density()+
+  geom_histogram()
+```
 
 
 
@@ -305,7 +320,7 @@ pwc <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatmen
 ```
 
 ```{r}
-dunnt <- dunnTest(x = resp_distvsundist$fco2_dry, g = resp_distvsundist$group, method = "bonferroni")
+dunnt <- dunnTest(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
 dunns <- dunnt$res
 cld <- cldList(comparison = dunns$Comparison,
                p.value = dunns$P.adj,
@@ -331,6 +346,37 @@ resp_data_finalw %>%
   ggtitle("Soil respiration across treatments")
 #ggsave("../output/treatments_pwc.jpg")
 ```
+# kruskall-wallis between disturbed and undisturbed 
+```{r}
+dunnt2 <- dunnTest(x = resp_distvsundist$fco2_dry, g = resp_distvsundist$group, method = "bonferroni")
+dunns2 <- dunnt2$res
+cld2 <- cldList(comparison = dunns2$Comparison,
+               p.value = dunns2$P.adj,
+               threshold = 0.05) 
+names(cld2)[1] <- "treatment"
+```
+
+```{r}
+resp_distvsundist %>% 
+  ggplot(aes(group, fco2_dry))+
+  geom_boxplot(aes(color = group))+
+  geom_label(data = cld2, aes(label = Letter,y = 4, x = treatment), 
+            fontface = "bold",
+            size=3.5)+
+  labs(x = "Treatment",
+       y = "Soil respiration",
+       title = "Disturbed v/s Undisturbed ")
+#ggsave("../output/overall_distvsundist.jpg")
+```
+
+
+
+
+
+
+
+
+
 # SWC vs Flux - at different temperature range
 
 ```{r}
@@ -343,6 +389,7 @@ resp_data_finalw %>%
   labs(x = "Volumetric water content",
        y = "CO2 flux in umol/m2/s ")+
   ggtitle("20 - 30 degC")
+#ggsave("../output/VWCvsFluxT1.jpg")
 ```
 
 ```{r}
@@ -355,6 +402,7 @@ resp_data_finalw %>%
   labs(x = "Volumetric water content",
        y = "CO2 flux in umol/m2/s ")+
   ggtitle("10 - 20 degC")
+ggsave("../output/VWCvsFluxT2.jpg")
 ```
 
 ```{r}
@@ -368,8 +416,5 @@ ggplot(aes(swc_2_mean, fco2_dry))+
        y = "CO2 flux in umol/m2/s ")
 ```
 
-```{r}
-resp_data_finalw %>% 
-  filter(ts_2_mean>30)
-```
+
 
