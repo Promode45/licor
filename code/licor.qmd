@@ -13,6 +13,8 @@ library(rstatix)
 library(FSA)
 #install.packages("rcompanion")
 library(rcompanion)
+#install.packages("plotly")
+library(plotly)
 ```
 
 You can add options to executable code like this
@@ -200,7 +202,7 @@ resp_data_wrm %>%
 ```
 ```{r}
 resp_data_wrm %>% 
-  filter(treatment == "NPK + Disturbance", drying_cycle ==3) %>%
+  filter(treatment == "NPK+Disturbance", drying_cycle ==3) %>%
   ggplot(aes(ts_2_mean, fco2_dry))+
   geom_point()+
   geom_smooth(method = lm)+
@@ -216,13 +218,15 @@ resp_data_wrm %>%
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point()+
   stat_smooth(method = lm)+
+  labs(x = "Soil moisture",
+       y = "Flux in umol/m2/s")+
   facet_wrap(~treatment)
 #ggsave("../output/SRvsSM.jpg")
 ```
 
 ```{r}
 resp_data_wrm %>% 
-  filter(treatment == "NPK + Disturbance", drying_cycle ==3) %>%
+  filter(treatment == "NPK+Disturbance", drying_cycle ==3) %>%
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point()+
   geom_smooth(method = lm)+
@@ -239,10 +243,10 @@ resp_data_finalw %>%
    .default = "Undisturbed"
  )) %>% 
   group_by(Treatment,tod) %>% 
-  filter(drying_cycle == 2) %>% 
+  filter(drying_cycle == 3) %>% 
   filter(!treatment == "Outside treatments") %>% 
-  ggplot(aes(dar, swc_2_mean)) + 
-  geom_boxplot(aes(color = Treatment, fill = tod), alpha = 0.3) +
+  ggplot(aes(dar, fco2_dry)) + 
+  geom_boxplot(aes(color = Treatment), alpha = 0.3) +
   labs(x = "Days after rain",
        y = "Soil respiration",
        title = "Drying cycle 3")+
@@ -260,12 +264,29 @@ resp_distvsundist <- resp_data_finalw %>%
   mutate(group = factor(group))
 
 resp_distvsundist %>% 
-  filter(group == "Disturbed") %>% 
-  ggplot(aes(treatment, fco2_dry)) +
-  geom_boxplot()+
-  facet_wrap(~drying_cycle)
-  
+  filter(drying_cycle == 3) %>% 
+  filter(!treatment == "Outside treatments") %>% 
+  ggplot(aes(dar, fco2_dry))+
+  geom_boxplot(aes(color = group, fill = tod), alpha = 0.3)+
+  labs(x = "Days after rain",
+       y = "Soil respiration",
+       title = "Drying cycle 3")+
+  scale_fill_viridis_d()
+#ggsave("../output/SRvsDAR.jpg")
 ```
+```{r}
+resp_distvsundist %>% 
+  filter(drying_cycle == 3) %>% 
+  filter(!treatment == "Outside treatments") %>% 
+  ggplot(aes(dar, swc_2_mean))+
+  geom_boxplot(aes(color = group, fill = tod), alpha = 0.3)+
+  scale_fill_viridis_d()+
+  labs(x = "Days after rain",
+       y = "Soil moisture",
+       title = "Drying cycle 3")
+```
+
+
 ```{r}
 resp_data_finalw %>% 
   group_by(treatment) %>% 
@@ -276,7 +297,7 @@ resp_data_finalw %>%
 
 Kruskall-Wallis test
 ```{r}
-kruskal.test(fco2_dry ~ treatment, data = resp_data_finalw)
+kruskal.test(fco2_dry ~ group, data = resp_distvsundist)
 pwc <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatment,
                      p.adjust.methods = "BH")
 
@@ -284,7 +305,7 @@ pwc <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatmen
 ```
 
 ```{r}
-dunnt <- dunnTest(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
+dunnt <- dunnTest(x = resp_distvsundist$fco2_dry, g = resp_distvsundist$group, method = "bonferroni")
 dunns <- dunnt$res
 cld <- cldList(comparison = dunns$Comparison,
                p.value = dunns$P.adj,
@@ -304,13 +325,51 @@ resp_data_finalw %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
   scale_fill_viridis_d()+
   theme(legend.position = "none")+
-  geom_text(data = cld, aes(label = Letter,y = 4, x = treatment), 
-            vjust = -0.5,
-            hjust= 0.5,
+  geom_label(data = cld, aes(label = Letter,y = 4, x = treatment), 
             fontface = "bold",
-            size=3.5,
-            check_overlap = F)+
+            size=3.5)+
   ggtitle("Soil respiration across treatments")
 #ggsave("../output/treatments_pwc.jpg")
+```
+# SWC vs Flux - at different temperature range
+
+```{r}
+resp_data_finalw %>% 
+  filter(ts_2_mean >= 20 & ts_2_mean <= 30) %>% 
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point(aes(color = treatment))+
+  geom_smooth(method = lm)+
+  scale_fill_viridis_d()+
+  labs(x = "Volumetric water content",
+       y = "CO2 flux in umol/m2/s ")+
+  ggtitle("20 - 30 degC")
+```
+
+```{r}
+resp_data_finalw %>% 
+  filter(ts_2_mean >= 10 & ts_2_mean < 20) %>% 
+  ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point(aes(color = treatment))+
+  geom_smooth(method = lm)+
+  scale_fill_viridis_d()+
+  labs(x = "Volumetric water content",
+       y = "CO2 flux in umol/m2/s ")+
+  ggtitle("10 - 20 degC")
+```
+
+```{r}
+resp_data_finalw %>% 
+  filter(ts_2_mean < 10) %>% 
+ggplot(aes(swc_2_mean, fco2_dry))+
+  geom_point(aes(color = treatment))+
+  geom_smooth(method = lm)+
+  scale_fill_viridis_d()+
+  labs(x = "Volumetric water content",
+       y = "CO2 flux in umol/m2/s ")
+```
+
+```{r}
+resp_data_finalw %>% 
+  filter(ts_2_mean>30)
 ```
 
