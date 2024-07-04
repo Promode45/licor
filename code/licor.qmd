@@ -474,7 +474,7 @@ resp_data_wrm |>
 ```{r}
 resp_data_wrm1 <- resp_data_wrm
 factor(days_in_month(resp_data_wrm$date_time_initial_value))
-resp_data_wrm1$date_time_initial_value <- factor(date(resp_data_wrm1$date_time_initial_value))
+resp_data_wrm1$date_time_initial_value <- factor(format(resp_data_wrm1$date_time_initial_value, format= "%m-%d"))
 resp_data_wrm1 |> 
   select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle, daym, label) |>
   group_by(date_time_initial_value, treatment) |> 
@@ -501,16 +501,50 @@ ggplot(resp_data_wrm, aes(x = date_time_initial_value, y = swc_2_mean, shape = t
   scale_color_brewer(palette = "Set1") 
 ```
 
-```{r}
-resp_data_wrm1 |> 
+```{r fig.width= 10, fig.height= 15}
+p1 <- resp_data_wrm1 |> 
   select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle, daym, label,fco2_dry) |>
   group_by(date_time_initial_value, treatment) |> 
   summarise(mean_fco2= mean(fco2_dry, na.rm = T)) |> 
   ggplot(aes(date_time_initial_value,mean_fco2, group = treatment, color = treatment)) +
-  geom_line() +
-  geom_point()+
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))#+
-  facet_wrap(~treatment)
+  geom_line(position = position_dodge(0.2)) +
+  geom_point(position = position_dodge(0.2))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  labs(x = "Date", 
+       y = "Mean soil respiration",
+       title = "Soil respiration over time by treatment")
+p2 <- resp_data_wrm1 |> 
+  select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle, daym, label,fco2_dry) |>
+  group_by(date_time_initial_value, treatment) |> 
+  summarise(mean_swc_2_mean= mean(swc_2_mean, na.rm = T)) |> 
+  ggplot(aes(date_time_initial_value,mean_swc_2_mean, group = treatment, color = treatment)) +
+  geom_line(position = position_dodge(0.2)) +
+  geom_point(position = position_dodge(0.2))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  labs(y = "Mean soil moisture",
+       title = "Soil moisture over time by treatment")
+p3 <- resp_data_wrm1 |> 
+  select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle, daym, label,fco2_dry, ts_2_mean) |>
+  group_by(date_time_initial_value, treatment) |> 
+  summarise(mean_ts= mean(ts_2_mean, na.rm = T)) |> 
+  ggplot(aes(date_time_initial_value,mean_ts, group = treatment, color = treatment)) +
+  geom_line(position = position_dodge(0.2)) +
+  geom_point(position = position_dodge(0.2))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+   labs(x = "Date", 
+       y = "Mean soil temperature",
+       title = "Soil temperature over time by treatment")
 
+figure <- ggarrange(p1+rremove("xlab"),p2+rremove("xlab"),p3,
+                    labels = c("A","B","C"),
+                    label.y = 1,
+                    ncol = 1, nrow = 3,
+                    common.legend = T,
+                    legend = "right", 
+                    heights = c(2,2,2),
+                    widths = c(2,2,2)
+                    )
+figure
+ggexport(figure, filename = "combined_linegraph.jpg")
 ```
 
