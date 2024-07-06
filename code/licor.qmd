@@ -17,6 +17,9 @@ library(rcompanion)
 library(plotly)
 #install.packages("ggpubr")
 library(ggpubr)
+#install.packages("reshape")
+library(reshape)
+
 ```
 
 You can add options to executable code like this
@@ -50,6 +53,7 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
   y[x < (qnt[1] - H)] <- NA
   y[x > (qnt[2] + H)] <- NA
   y
+  print(y)
 }
 ```
 
@@ -65,7 +69,7 @@ resp_data_w <- resp_data_w %>%
   mutate(date_time_initial_value = as.POSIXct(date_time_initial_value, tz = Sys.timezone(), format="%Y/%m/%d %H:%M:%S")) %>% 
   mutate(label = factor(label)) %>% 
  mutate_if(is.character, as.numeric) %>% 
-  mutate(daym = date(date_time_initial_value)) %>% 
+  mutate(daym = day(date_time_initial_value)) %>% 
   mutate(month = month(date_time_initial_value)) %>% 
   mutate(treatment = case_when( label %in% c(1,8,12,20,23) ~ "Disturbance",
                                 label %in% c(3,10,14,17,24,2,9,11,19,25) ~ "NPK",
@@ -132,6 +136,7 @@ summary(resp_data_w)
 resp_data_wrm <- resp_data_w %>% 
   mutate(swc_2_mean = remove_outliers(swc_2_mean)) %>% 
   na.omit()
+#write.csv(resp_data_wrm, file = "../data/resp_data_naomit.csv")
 
 resp_data_finalw <- resp_data_wrm %>% 
   group_by(label, daym, month, treatment,drying_cycle,dar,tod,date_time_initial_value) %>% 
@@ -252,11 +257,9 @@ resp_distvsundist <- resp_data_finalw %>%
   mutate(group = factor(group))
 
 resp_distvsundist %>% 
-  filter(drying_cycle == 3) %>% 
-  filter(!treatment == "Outside_treatments") %>% 
+  filter(drying_cycle == 3) %>%  
   ggplot(aes(swc_2_mean, fco2_dry))+
-  geom_point(aes(color = group))+
-  geom_smooth(method = lm, aes(color = group))
+  geom_point()
 ```
 
 ```{r}
@@ -275,7 +278,7 @@ resp_data_finalw %>%
  mutate(Treatment = case_when(
    treatment == "Disturbance" ~ "Disturbed", 
    treatment == "NPK + Disturbance" ~ "Disturbed", 
-   treatment == "Control" ~ "Control",
+   treatment == "Control" ~ "Undisturbed",
     treatment == "Outside_treatments" ~ "Control",
    .default = "Undisturbed"
  )) %>% 
@@ -298,7 +301,7 @@ resp_distvsundist %>%
   filter(drying_cycle == 3) %>% 
   filter(!treatment == "Outside treatments") %>% 
   ggplot(aes(dar, fco2_dry))+
-  geom_boxplot(aes(color = group, fill = tod), alpha = 0.3)+
+  geom_boxplot(aes(color = group), alpha = 0.3)+
   labs(x = "Days after rain",
        y = "Soil respiration",
        title = "Drying cycle 3")+
@@ -308,9 +311,9 @@ resp_distvsundist %>%
 ```{r}
 resp_distvsundist %>% 
   filter(drying_cycle == 3) %>% 
-  filter(!treatment == "Outside treatments") %>% 
+  filter(!group == "Control") %>% 
   ggplot(aes(dar, swc_2_mean))+
-  geom_boxplot(aes(color = group, fill = tod), alpha = 0.3)+
+  geom_boxplot(aes(color = group), alpha = 0.3)+
   scale_fill_viridis_d()+
   labs(x = "Days after rain",
        y = "Soil moisture",
@@ -485,22 +488,8 @@ resp_data_wrm1 |>
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))#+
   facet_wrap(~treatment)
 
-ggplot(resp_data_wrm, aes(x = date_time_initial_value, y = swc_2_mean, shape = treatment)) +
-  geom_line(linewidth = 1.2) +  # Adjust line size for better visibility
-  geom_point(size = 1.5, alpha = 0.6) +  # Optional: Add points for better visibility of data
-  scale_x_datetime(breaks = c("2021-02-01", "2021-04-01"), date_labels = "%b %d", date_breaks = "1 month") +  # Improve date formatting
-  labs(title = "Soil Water Content Over Time by Treatment",
-       x = "Date",
-       y = "Mean Soil Water Content",
-       color = "Treatment") +  # Add titles and axis labels
-  theme_minimal() +  # Apply a minimal theme for a clean look
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels for better readability
-    legend.position = "right"  # Adjust legend position
-  ) +
-  scale_color_brewer(palette = "Set1") 
 ```
-
+# combined line graphs 
 ```{r fig.width= 10, fig.height= 15}
 p1 <- resp_data_wrm1 |> 
   select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle, daym, label,fco2_dry) |>
@@ -509,7 +498,8 @@ p1 <- resp_data_wrm1 |>
   ggplot(aes(date_time_initial_value,mean_fco2, group = treatment, color = treatment)) +
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
+        axis.text.x.bottom = element_blank())+
   labs(x = "Date", 
        y = "Mean soil respiration",
        title = "Soil respiration over time by treatment")
@@ -520,7 +510,8 @@ p2 <- resp_data_wrm1 |>
   ggplot(aes(date_time_initial_value,mean_swc_2_mean, group = treatment, color = treatment)) +
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
+        axis.text.x.bottom = element_blank())+
   labs(y = "Mean soil moisture",
        title = "Soil moisture over time by treatment")
 p3 <- resp_data_wrm1 |> 
@@ -546,5 +537,20 @@ figure <- ggarrange(p1+rremove("xlab"),p2+rremove("xlab"),p3,
                     )
 figure
 ggexport(figure, filename = "combined_linegraph.jpg")
+```
+
+# heatmaps
+```{r}
+x <- melt(resp_data_wrm1, id = c("treatment","date_time_initial_value"))
+
+resp_data_finalw |> 
+  ggplot(aes(swc_2_mean,treatment, fill = fco2_dry, width = .03))+
+  geom_tile()+
+  scale_fill_gradient(low = "white", high = "blue")+
+  theme_minimal()
+```
+
+```{r}
+
 ```
 
