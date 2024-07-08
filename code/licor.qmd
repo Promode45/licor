@@ -152,7 +152,9 @@ resp_data_finalw <- resp_data_wrm %>%
             
             
             ) %>% 
-  ungroup()
+  ungroup() |> 
+  mutate(date = as_date(date_time_initial_value)) |> 
+  mutate(fdate = factor(date))
 
 resp_data_finalw1 <- resp_data_wrm |> 
   summarise(across(swc_2_mean:ta_mean,mean, na.rm = T),.by = c(label,daym,month))
@@ -426,38 +428,38 @@ resp_distvsundist %>%
 
 ```{r fig.width=8, fig.height=13}
 t1 <- resp_data_finalw %>% 
-  filter(ts_2_mean >= 20 & ts_2_mean <= 30) %>% 
+  filter(ts_2_mean >= 23 & ts_2_mean <= 30) %>% 
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
        y = "CO2 flux in umol/m2/s ")+
-  ggtitle("20 - 30 degC")+
+  ggtitle("23 - 30 degC")+
   theme_minimal()
 #ggsave("../output/VWCvsFluxT1.jpg")
 
  t2 <- resp_data_finalw %>% 
-  filter(ts_2_mean >= 10 & ts_2_mean < 20) %>% 
+  filter(ts_2_mean >= 17.5 & ts_2_mean < 23) %>% 
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
        y = "CO2 flux in umol/m2/s ")+
-  ggtitle("10 - 20 degC")+
+  ggtitle("17.5 - 23 degC")+
   theme_minimal()
 #ggsave("../output/VWCvsFluxT2.jpg")
 
 t3 <- resp_data_finalw %>% 
-  filter(ts_2_mean < 10) %>% 
+  filter(ts_2_mean < 17.5) %>% 
 ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
        y = "CO2 flux in umol/m2/s ",
-       title = " <10 degC")+
+       title = " <17.5 degC")+
   theme_minimal()
 ```
 
@@ -472,6 +474,7 @@ fig <- ggarrange(t1+rremove("xlab"),t2+rremove("xlab"),t3,
                     widths = c(2,2,2),
                  label.x = 1  )
 fig
+ggexport(fig, "temp_range.jpg")
 ```
 
 
@@ -608,8 +611,23 @@ resp_data_wrm2 <-  resp_data_wrm %>%
        title = "Soil respiration over time by treatment")
 #ggsave("../output/test.jpg")
 ```
-
+# ANOVA
 ```{r}
+#install.packages("nlme")
+library(nlme)
+rcbd_mod <- lm(data = resp_data_finalw, 
+               fco2_dry ~ treatment )
+rcbd_mod
+library(car)
+Anova(rcbd_mod, type = 3)
 
+resp_data_finalw |> 
+  distinct(treatment,rep)
+```
+Simple anova
+```{r}
+res.aov <- aov(fco2_dry ~ treatment, data = resp_data_finalw)
+summary(res.aov)
+TukeyHSD(res.aov)
 ```
 
