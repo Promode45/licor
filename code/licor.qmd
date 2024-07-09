@@ -318,7 +318,7 @@ Comparing plots within disturbed plots
 resp_distvsundist %>% 
   filter(drying_cycle == 3) |> 
   filter(!group == "Control") %>% 
-  ggplot(aes(dar, fco2_dry))+
+  ggplot(aes(day(date_time_initial_value), fco2_dry))+
   geom_boxplot(aes(color = group), alpha = 0.3)+
   labs(x = "Days after rain",
        y = "Soil respiration",
@@ -434,8 +434,12 @@ t1 <- resp_data_finalw %>%
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
-       y = "CO2 flux in umol/m2/s ")+
-  ggtitle("23 - 30 degC")+
+       y = "Soil respiration in umol/m2/s ")+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
+        axis.text.x.bottom = element_blank(),
+        text = element_text(size = 14),
+        legend.position = "none")+
+  ggtitle("23 - 30 °C")+
   theme_minimal()
 #ggsave("../output/VWCvsFluxT1.jpg")
 
@@ -446,9 +450,13 @@ t1 <- resp_data_finalw %>%
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
-       y = "CO2 flux in umol/m2/s ")+
-  ggtitle("17.5 - 23 degC")+
-  theme_minimal()
+       y = "Soil respiration in umol/m2/s ")+
+   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
+        axis.text.x.bottom = element_blank(),
+        text = element_text(size = 14),
+        legend.position = "none")+
+  ggtitle("17.5 - 23 °C")+
+   theme_minimal()
 #ggsave("../output/VWCvsFluxT2.jpg")
 
 t3 <- resp_data_finalw %>% 
@@ -458,8 +466,8 @@ ggplot(aes(swc_2_mean, fco2_dry))+
   geom_smooth(method = lm)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
-       y = "CO2 flux in umol/m2/s ",
-       title = " <17.5 degC")+
+       y = "Soil respiraiton in umol/m2/s ",
+       title = " <17.5 °C")+
   theme_minimal()
 ```
 
@@ -474,7 +482,7 @@ fig <- ggarrange(t1+rremove("xlab"),t2+rremove("xlab"),t3,
                     widths = c(2,2,2),
                  label.x = 1  )
 fig
-ggexport(fig, "temp_range.jpg")
+ggexport(fig,filename =  "temp_range.jpg")
 ```
 
 
@@ -490,7 +498,7 @@ resp_data_wrm |>
 ```
 
 # soil moisture across treatments in post-burn and pre-burn 
-```{r}
+```{r, fig.width=4, fig.height=4}
 resp_data_wrm |> 
   select(date_time_initial_value, label, swc_2_mean, treatment, rep, drying_cycle) |> 
   mutate(burn_status = case_when(
@@ -499,14 +507,16 @@ resp_data_wrm |>
   )) |> 
   ggplot(aes(treatment, swc_2_mean, color = treatment))+
   geom_boxplot()+
+  theme_minimal()+
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
-        legend.position = "none")+
+        legend.position = "none", 
+        text = element_text(size = 11))+
   facet_wrap(~burn_status)+
   labs(title = "Soil moisture in post-burn v/s pre-burn periods across treatments",
        x = "Treatments",
        y = "Volumetric water content")+
   scale_color_viridis_d()
-#ggsave("../output/postvspreburn.jpg")
+ggsave("../output/postvspreburn1.jpg")
 ```
 
 ```{r}
@@ -533,9 +543,16 @@ p1 <- resp_data_wrm1 |>
   ggplot(aes(date_time_initial_value,mean_fco2, group = treatment, color = treatment)) +
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(), # Remove the legend title
+    legend.text = element_text(size = 14), # Adjust legend text size
+    legend.key.size = unit(1, "lines"), # Adjust legend key size
+    legend.spacing.y = unit(0.5, "lines")) + # Adjust spacing between legend items
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
         text = element_text(size = 14))+
+  geom_text(data = summary_data1, aes(label = letter, y = c(2.2,1.8,1.6,2.5), x = date_time_initial_value), show.legend = F, size = 5)+
   labs(x = "Date", 
        y = "Mean soil respiration",
        title = "Soil respiration over time by treatment")
@@ -546,9 +563,17 @@ p2 <- resp_data_wrm1 |>
   ggplot(aes(date_time_initial_value,mean_swc_2_mean, group = treatment, color = treatment)) +
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(), # Remove the legend title
+    legend.text = element_text(size = 14), # Adjust legend text size
+    legend.key.size = unit(1, "lines"), # Adjust legend key size
+    legend.spacing.y = unit(0.5, "lines"))+ # Adjust spacing between legend items
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
-         text = element_text(size = 14))+
+         text = element_text(size = 14),
+        legend.position = "none")+
+   geom_text(data = summary_data_swc, aes(label = letter, y = c(0.32,0.36,0.28,0.335), x = date_time_initial_value), show.legend = F, size = 5)+
   labs(y = "Mean soil moisture",
        title = "Soil moisture over time by treatment")
 p3 <- resp_data_wrm1 |> 
@@ -558,6 +583,7 @@ p3 <- resp_data_wrm1 |>
   ggplot(aes(date_time_initial_value,mean_ts, group = treatment, color = treatment)) +
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
+  theme_minimal()+
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
          text = element_text(size = 14))+
    labs(x = "Date", 
@@ -572,10 +598,11 @@ figure <- ggarrange(p1+rremove("xlab"),p2+rremove("xlab"),p3,
                     common.legend = T,
                     legend = "right", 
                     heights = c(2,2,2),
-                    widths = c(2,2,2)
+                    widths = c(2,2,2),
+                    label.x = 1
                     )
 figure
-#ggexport(figure, filename = "combined_linegraph.jpg")
+ggsave("../output/combined_linegraph.jpg", width = 10, height = 15)
 ```
 
 # heatmaps
@@ -620,14 +647,69 @@ rcbd_mod <- lm(data = resp_data_finalw,
 rcbd_mod
 library(car)
 Anova(rcbd_mod, type = 3)
-
-resp_data_finalw |> 
-  distinct(treatment,rep)
 ```
 Simple anova
 ```{r}
 res.aov <- aov(fco2_dry ~ treatment, data = resp_data_finalw)
-summary(res.aov)
+tbl <- summary(res.aov) 
+
 TukeyHSD(res.aov)
+```
+
+```{r}
+aov_residuals <- residuals(res.aov)
+hist(aov_residuals)
+qqPlot(aov_residuals)
+shapiro.test(res.aov$residuals)
+```
+Kruskall-Wallis and Dunns test
+```{r}
+(kruskal.test(fco2_dry ~ treatment, data = resp_data_finalw))
+pwctrt <- pairwise.wilcox.test(resp_data_finalw$fco2_dry, resp_data_finalw$treatment, p.adjust.method = "BH") 
+dunnt <- dunnTest(x = resp_data_finalw$fco2_dry, g = resp_data_finalw$treatment, method = "bonferroni")
+dunns <- dunnt$res
+cld <- cldList(comparison = dunns$Comparison,
+               p.value = dunns$P.adj,
+               threshold = 0.05)
+names(cld)[1] <- "treatment"
+cld_selected <- cld |> 
+  as.data.frame() |> 
+  mutate(letter = trimws(Letter)) |> 
+  mutate(treatment = treatment)
+
+resp_data_finalw <- resp_data_finalw |> 
+  mutate(date_time_initial_value= factor(format(date_time_initial_value, format = "%m-%d")))
+
+summary_data1 <- resp_data_finalw |> 
+  group_by(treatment) |> 
+  summarize(max_fco2 = max(fco2_dry, na.rm = T)) |> 
+  left_join(cld_selected, by = "treatment") |> 
+  mutate(date_time_initial_value = as.Date("2024-03-28")) |> 
+  mutate(date_time_initial_value = factor(format(date_time_initial_value, format = "%m-%d")))
+summary_data <- merge(summary_data1, cld_selected, by = c ("treatment","md"))
+```
+kruskall-wallis for moisture
+```{r}
+kruskal.test(swc_2_mean ~ treatment, data = resp_data_finalw)
+pwcswc <- pairwise.wilcox.test(resp_data_finalw$swc_2_mean, resp_data_finalw$treatment, p.adjust.method = "BH") 
+dunn_swc <- dunnTest(x = resp_data_finalw$swc_2_mean, g = resp_data_finalw$treatment, method = "bonferroni")
+dunns_swc <- dunn_swc$res
+cld_swc <- cldList(comparison = dunns_swc$Comparison,
+               p.value = dunns_swc$P.adj,
+               threshold = 0.05)
+cld_selected_swc <- cld_swc |> 
+  as.data.frame() |> 
+  mutate(letter = trimws(Letter)) |> 
+  mutate(treatment = Group)
+summary_data_swc <- resp_data_finalw |> 
+  group_by(treatment) |> 
+  summarize(max_swc = max(swc_2_mean, na.rm = T)) |> 
+  left_join(cld_selected_swc, by = "treatment") |> 
+  mutate(date_time_initial_value = as.Date("2024-03-28")) |> 
+  mutate(date_time_initial_value = factor(format(date_time_initial_value, format = "%m-%d")))
+```
+
+```{r}
+
 ```
 
