@@ -140,7 +140,7 @@ resp_data_wrm <- resp_data_w %>%
 #write.csv(resp_data_wrm, file = "../data/resp_data_naomit.csv")
 
 resp_data_finalw <- resp_data_wrm %>% 
-  group_by(label, daym,month) %>% 
+  group_by(label, daym,month,tod) %>% 
   summarise(across(swc_2_mean:ta_mean, mean, na.rm = T),
             treatment = first(treatment),
             date_time_initial_value = first(date_time_initial_value),
@@ -158,6 +158,8 @@ resp_data_finalw <- resp_data_wrm %>%
 
 resp_data_finalw1 <- resp_data_wrm |> 
   summarise(across(swc_2_mean:ta_mean,mean, na.rm = T),.by = c(label,daym,month))
+
+write_csv(resp_data_finalw, file = "../output/data.csv")
 
 
 ```
@@ -293,8 +295,8 @@ resp_distvsundist %>%
   facet_wrap(~group)
 ```
 Grouping disturbed and undisturbed plots 
-```{r}
-resp_data_finalw %>% 
+```{r fig.width=10, fig.height=13}
+dc3_1 <-  resp_data_finalw %>% 
  mutate(Treatment = case_when(
    treatment == "Disturbance" ~ "Disturbed", 
    treatment == "NPK+Disturbance" ~ "Disturbed", 
@@ -303,15 +305,52 @@ resp_data_finalw %>%
  )) %>% 
   group_by(Treatment,tod) %>% 
   filter(drying_cycle == 3) %>% 
+  filter(!(date == "2024-03-27" & tod == "pm")) |> 
   ggplot(aes(dar, fco2_dry)) + 
-  geom_boxplot(aes(color = Treatment), alpha = 0.3) +
+  geom_boxplot(aes(color = Treatment), alpha = 0.6) +
   labs(x = "Days after rain",
        y = "Soil respiration",
-       title = "Drying cycle 3")+
-  scale_fill_viridis_d()
-#ggsave("../output/SRvsDAR_withOC.jpg")
+       title = "Drying cycle 3", 
+       caption = "* measurements made in the afternoon")+
+  theme_minimal()+
+  scale_fill_viridis_d()+
+  annotate("text", x = 2, y = 3.4, label = "*", size = 10)+
+  ylim(0,3.5)+
+  theme(panel.grid.minor.y  = element_blank(),
+        axis.text.y = element_text(size = 18),
+        text = element_text(size = 18)
+        )
+#ggsave("../output/test1.jpg")
 
+dc3_2 <- resp_distvsundist %>% 
+  filter(drying_cycle == 3) %>% 
+ filter(!(date == "2024-03-27" & tod == "pm")) |> 
+  ggplot(aes(dar, swc_2_mean))+
+  geom_boxplot(aes(color = group), alpha = 0.3)+
+  scale_fill_viridis_d()+
+  labs(x = "Days after rain",
+       y = "Soil moisture",
+       title = "Drying cycle 3",
+       caption = "* measurements made in the afternoon")+
+  theme_minimal()+
+  annotate("text", x = 2, y = 0.4, label = "*", size = 10)+
+  ylim(0.1,0.45)+
+  theme(panel.grid.minor.y = element_blank(),
+        axis.text.y = element_text(size = 18),
+        text = element_text(size = 18))
 
+fig_dc3 <- ggarrange(dc3_1+rremove("xlab"),dc3_2,
+                  labels = c("A","B"),
+                    label.y = 0.8,
+                    ncol = 1, nrow = 2,
+                    common.legend = T,
+                    legend = "top", 
+                    heights = c(3,3),
+                    widths = c(2,2),
+                 label.x = 1  )
+ggsave("../output/dc3_1.svg")
+ggexport(fig_dc3, filename = "dc3.jpg")
+library(svglite)
 ```
 Comparing plots within disturbed plots 
 ```{r}
@@ -327,17 +366,7 @@ resp_distvsundist %>%
 #ggsave("../output/SRvsDAR.jpg")
 ```
 ```{r}
-resp_distvsundist %>% 
-  filter(drying_cycle == 3) %>% 
-  filter(!group == "Control") %>% 
-  ggplot(aes(dar, swc_2_mean))+
-  geom_boxplot(aes(color = group), alpha = 0.3)+
-  #geom_jitter(aes(color = group))+ 
-  scale_fill_viridis_d()+
-  labs(x = "Days after rain",
-       y = "Soil moisture",
-       title = "Drying cycle 3",
-       caption = "Control considered undisturbed")
+
 ```
 
 
@@ -431,44 +460,50 @@ t1 <- resp_data_finalw %>%
   filter(ts_2_mean >= 23 & ts_2_mean <= 30) %>% 
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
-  geom_smooth(method = lm)+
+  geom_smooth(method = lm, aes(color = treatment), se = F) +
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
-       y = "Soil respiration in umol/m2/s ")+
+       y = "Soil respiration in umol/m2/s ",
+       title = "23 - 30 °C")+
+  theme_minimal()+
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
         text = element_text(size = 14),
-        legend.position = "none")+
-  ggtitle("23 - 30 °C")+
-  theme_minimal()
+        legend.position = "none",
+        panel.grid.minor.y = element_blank())
+  
 #ggsave("../output/VWCvsFluxT1.jpg")
 
  t2 <- resp_data_finalw %>% 
   filter(ts_2_mean >= 17.5 & ts_2_mean < 23) %>% 
   ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
-  geom_smooth(method = lm)+
+  geom_smooth(method = lm, aes(color = treatment), se = F)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
-       y = "Soil respiration in umol/m2/s ")+
+       y = "Soil respiration in umol/m2/s ",
+       title = "17.5 - 23 °C")+
+   theme_minimal()+
    theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
         text = element_text(size = 14),
-        legend.position = "none")+
-  ggtitle("17.5 - 23 °C")+
-   theme_minimal()
+        legend.position = "none",
+        panel.grid.minor.y = element_blank())
+   
 #ggsave("../output/VWCvsFluxT2.jpg")
 
 t3 <- resp_data_finalw %>% 
   filter(ts_2_mean < 17.5) %>% 
 ggplot(aes(swc_2_mean, fco2_dry))+
   geom_point(aes(color = treatment))+
-  geom_smooth(method = lm)+
+  geom_smooth(method = lm, aes(color = treatment), se = F)+
   scale_fill_viridis_d()+
   labs(x = "Volumetric water content",
        y = "Soil respiraiton in umol/m2/s ",
        title = " <17.5 °C")+
-  theme_minimal()
+  theme_minimal()+
+  theme(panel.grid.minor.y = element_blank(),
+        text = element_text(size = 14))
 ```
 
 ```{r fig.width=8, fig.height=13}
@@ -482,7 +517,12 @@ fig <- ggarrange(t1+rremove("xlab"),t2+rremove("xlab"),t3,
                     widths = c(2,2,2),
                  label.x = 1  )
 fig
-ggexport(fig,filename =  "temp_range.jpg")
+```
+
+
+```{r fig.width=8, fig.height=13}
+ggsave("../output/temp_range.svg")
+#ggexport(fig,filename =  "temp_range.jpg")
 ```
 
 
@@ -551,8 +591,9 @@ p1 <- resp_data_wrm1 |>
     legend.spacing.y = unit(0.5, "lines")) + # Adjust spacing between legend items
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
-        text = element_text(size = 14))+
-  geom_text(data = summary_data1, aes(label = letter, y = c(2.2,1.8,1.6,2.5), x = date_time_initial_value), show.legend = F, size = 5)+
+        axis.text.y = element_text(size = 18),
+        text = element_text(size = 18))+
+  geom_text(data = summary_data1, aes(label = letter, y = c(2.2,1.8,1.6,2.5), x = date_time_initial_value, fontface = "bold"), show.legend = F, size = 8)+
   labs(x = "Date", 
        y = "Mean soil respiration",
        title = "Soil respiration over time by treatment")
@@ -571,9 +612,10 @@ p2 <- resp_data_wrm1 |>
     legend.spacing.y = unit(0.5, "lines"))+ # Adjust spacing between legend items
   theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
         axis.text.x.bottom = element_blank(),
-         text = element_text(size = 14),
+        axis.text.y = element_text(size = 18),
+         text = element_text(size = 18),
         legend.position = "none")+
-   geom_text(data = summary_data_swc, aes(label = letter, y = c(0.32,0.36,0.28,0.335), x = date_time_initial_value), show.legend = F, size = 5)+
+   geom_text(data = summary_data_swc, aes(label = letter, y = c(0.32,0.36,0.28,0.335), x = date_time_initial_value, fontface = "bold"), show.legend = F, size = 8)+
   labs(y = "Mean soil moisture",
        title = "Soil moisture over time by treatment")
 p3 <- resp_data_wrm1 |> 
@@ -584,8 +626,10 @@ p3 <- resp_data_wrm1 |>
   geom_line(position = position_dodge(0.2)) +
   geom_point(position = position_dodge(0.2))+
   theme_minimal()+
-  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5),
-         text = element_text(size = 14))+
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.5, size = 18),
+        axis.text.y = element_text(size = 18),
+         text = element_text(size = 18),
+        legend.position = "none")+
    labs(x = "Date", 
        y = "Mean soil temperature",
        title = "Soil temperature over time by treatment",
@@ -602,7 +646,7 @@ figure <- ggarrange(p1+rremove("xlab"),p2+rremove("xlab"),p3,
                     label.x = 1
                     )
 figure
-ggsave("../output/combined_linegraph.jpg", width = 10, height = 15)
+ggsave("../output/combined_linegraph3.svg", width = 10, height = 15)
 ```
 
 # heatmaps
@@ -710,6 +754,9 @@ summary_data_swc <- resp_data_finalw |>
 ```
 
 ```{r}
-
+resp_data_finalw |> 
+  filter(drying_cycle == 3) |> 
+  ggplot(aes(dar, fco2_dry))+
+  geom_boxplot(aes(color = treatment))
 ```
 
